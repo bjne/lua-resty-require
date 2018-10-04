@@ -14,6 +14,10 @@ local loadfile = loadfile
 local load_from_path = function(name, path, loader)
     local err, pkg
 
+    if path == nil then
+        return nil
+    end
+
     name = gsub(name, '%.', '/')
     path = gsub(path, '%?', name)
 
@@ -52,9 +56,12 @@ _M.loaders = {
     end
 }
 
-local require = function(self, name)
-    local errors
-    for i, loader in ipairs(self.loaders) do
+_M.safe = function(name, errors)
+    if name == nil then
+        return nil, "bad argument #1 to 'require' (string expected, got no value)"
+    end
+
+    for i, loader in ipairs(_M.loaders) do
         local pkg, err = loader(name)
 
         if pkg then
@@ -62,13 +69,27 @@ local require = function(self, name)
             return loaded[name]
         end
 
-        errors = errors or {}
-        errors[i+1] = err
+        if errors and err then
+            if type(errors) ~= "table" then
+                errors = { err }
+            else
+                errors[#errors + 1] = err
+            end
+        end
     end
 
-    errors[1] = format("module '%s' not found\n", name)
+    if errors then
+        errors = type(errors) == "table" and errors or {}
+        errors[1] = format("module '%s' not found\n", name)
+    end
 
-    return error(concat(errors), 2)
+    return nil, errors
+end
+
+local require = function(self, name)
+    local pkg, errors = self.safe(name, true)
+
+    return pkg and pkg, pkg or error(concat(errors), 2)
 end
 
 return setmetatable(_M, {

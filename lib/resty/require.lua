@@ -61,6 +61,10 @@ _M.safe = function(name, errors)
         return nil, "bad argument #1 to 'require' (string expected, got no value)"
     end
 
+    if loaded[name] then
+        return loaded[name]
+    end
+
     for i, loader in ipairs(_M.loaders) do
         local pkg, err = loader(name)
 
@@ -94,7 +98,7 @@ end
 
 return setmetatable(_M, {
     __call = function(self, name)
-        return name ~= nil and (loaded[name] or require(self, name))
+        return name ~= nil and require(self, name)
     end
 })
 

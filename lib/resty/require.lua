@@ -1,5 +1,7 @@
 local _M = { _VERSION = 0.1 }
 
+local lua_req = require -- TODO temp workaround for loading modules from binary
+
 local gsub = string.gsub
 local match = string.match
 local gmatch = string.gmatch
@@ -53,6 +55,11 @@ _M.loaders = {
     package_loader_c,
     function(name)
         return package_loader_c(name, true)
+    end,
+    -- TODO temp workaround to load modules from the compiled binary
+    function(name)
+        local ok, err = pcall(lua_req, name)
+        return (ok and err) or nil, not ok and err or nil
     end
 }
 
@@ -69,8 +76,18 @@ _M.safe = function(name, errors)
         local pkg, err = loader(name)
 
         if pkg then
+            --[[ The intended implementation
             loaded[name] = pkg(name)
             return loaded[name]
+            --]]
+            -- TODO temp workaround to load modules from binary
+            if type(pkg) == "function" then
+                loaded[name] = pkg(name)
+            else
+                loaded[name] = pkg
+            end
+            return loaded[name]
+            -- end temp
         end
 
         if errors and err then
